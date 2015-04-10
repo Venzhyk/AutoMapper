@@ -39,7 +39,8 @@ namespace AutoMapperSamples.Mappers
                 {
                     cfg.CreateMap<Destination, Source>()
                         .ForMember(d => d.SrcValue, opt => opt.MapFrom(s => s.DestValue))
-                        .ReverseMap();
+                        .ReverseMap()
+                        .ForMember(d => d.DestValue, opt => opt.MapFrom(s => s.SrcValue));
                 });
 
                 IQueryable<Destination> result = _source.AsQueryable()

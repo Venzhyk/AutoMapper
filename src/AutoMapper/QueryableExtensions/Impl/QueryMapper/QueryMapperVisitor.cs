@@ -52,10 +52,6 @@ namespace AutoMapper.QueryableExtensions.Impl.QueryMapper
             return newNode;
         }
 
-        protected override Expression VisitParameter(ParameterExpression node)
-        {
-            return _instanceParameter;
-        }
 
         protected override Expression VisitConstant(ConstantExpression node)
         {
@@ -66,33 +62,18 @@ namespace AutoMapper.QueryableExtensions.Impl.QueryMapper
             return node;
         }
 
-        protected override Expression VisitBinary(BinaryExpression node)
-        {
-            var left = Visit(node.Left);
-            var right = Visit(node.Right);
-
-            // Convert Right expression value to left expr type
-            // It is needed when PropertyMap is changing type of property
-            if (left.Type != right.Type && right.NodeType == ExpressionType.Constant)
-            {
-                var value = Convert.ChangeType(((ConstantExpression)right).Value, left.Type, Thread.CurrentThread.CurrentCulture);
-                right = Expression.Constant(value, left.Type);
-            }
-            //    right = Expression.(right, left.Type);
-
-            //var newNode = base.VisitBinary(node);
-            return Expression.MakeBinary(node.NodeType, left, right);
-        }
 
         protected override Expression VisitLambda<T>(Expression<T> node)
         {
-            var newBody = Visit(node.Body);
-            var newParams = node.Parameters.Select(p => (ParameterExpression)Visit(p));
+            var expressionGenType = typeof(Expression<>);
 
-            var delegateType = ChangeLambdaArgTypeFormSourceToDest(node.Type, newBody.Type);
+            var parameterDestType = ChangeLambdaArgTypeFormSourceToDest(node.Type, node.Body.Type);
 
-            var newLambda = Expression.Lambda(delegateType, newBody, newParams);
-            return newLambda;
+            var nodeDestType = expressionGenType.MakeGenericType(parameterDestType);
+
+            var destNode = MappingEngine.Map(node, node.GetType(), nodeDestType);
+            return (Expression)destNode;
+
         }
 
         protected override Expression VisitMethodCall(MethodCallExpression node)
@@ -110,10 +91,6 @@ namespace AutoMapper.QueryableExtensions.Impl.QueryMapper
             return newMethodCall;
         }
 
-        protected override Expression VisitMember(MemberExpression node)
-        {
-            return _memberVisitor.Visit(node);
-        }
 
         private MethodInfo ChangeMethodArgTypeFormSourceToDest(MethodInfo mi)
         {
